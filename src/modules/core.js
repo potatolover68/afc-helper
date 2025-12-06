@@ -979,6 +979,61 @@
 				} );
 
 				return deferred;
+			},
+
+			/**
+			 * Marks a page as reviewed using PageTriage API
+			 *
+			 * @param {number} pageId Page ID to mark as reviewed
+			 * @param {string} title Page title for status display
+			 * @return {jQuery.Deferred}
+			 */
+			patrolPageId: function ( pageId, title ) {
+				console.log( 'patrolPageId called with pageId:', pageId, 'title:', title );
+				console.log( 'patrolPageId: AFCH.status.$container exists?', !!AFCH.status.$container );
+				
+				let request, deferred = $.Deferred(),
+					status = new AFCH.status.Element( 'Patrolling $1...',
+						{ $1: AFCH.makeLinkElementToPage( title ) } );
+
+				console.log( 'patrolPageId: status element created:', status );
+				console.log( 'patrolPageId: status.$element:', status.$element );
+
+				request = {
+					action: 'pagetriageaction',
+					format: 'json',
+					formatversion: 2,
+					pageid: pageId,
+					reviewed: 1,
+					tags: 'AFCH'
+				};
+
+				if ( AFCH.consts.mockItUp ) {
+					console.log( 'patrolPageId: mockItUp is true, logging request:', request );
+					AFCH.log( request );
+					deferred.resolve();
+					return deferred;
+				}
+
+				console.log( 'patrolPageId: making API call with request:', request );
+				AFCH.api.postWithToken( 'csrf', request ).done( ( data ) => {
+					console.log( 'patrolPageId: API call succeeded, response:', data );
+					if ( data.pagetriageaction && data.pagetriageaction.result === 'success' ) {
+						console.log( 'patrolPageId: patrol successful, updating status to "Patrolled"' );
+						status.update( 'Patrolled $1' );
+						deferred.resolve( data );
+					} else {
+						console.error( 'patrolPageId: patrol failed, response:', data );
+						status.update( 'Failed to patrol $1: ' + JSON.stringify( data ) );
+						deferred.reject( data );
+					}
+				} ).fail( ( err ) => {
+					console.error( 'patrolPageId: API call failed:', err );
+					status.update( 'Failed to patrol $1: ' + JSON.stringify( err ) );
+					deferred.reject( err );
+				} );
+
+				return deferred;
 			}
 		},
 

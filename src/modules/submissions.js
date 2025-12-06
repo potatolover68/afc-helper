@@ -2313,8 +2313,7 @@
 			'Publishing accepted [[Wikipedia:Articles for creation|Articles for creation]] submission',
 			{ movetalk: true } ) // Also move associated talk page if exists (e.g. `Draft_talk:`)
 			.done( ( moveData ) => {
-				let $patrolLink,
-					newPage = new AFCH.Page( moveData.to ),
+				let newPage = new AFCH.Page( moveData.to ),
 					talkPage = newPage.getTalkPage(),
 					recentPage = new AFCH.Page( 'Wikipedia:Articles for creation/recent' );
 
@@ -2367,13 +2366,11 @@
 
 				// Patrol the new page if desired
 				if ( data.patrolPage ) {
-					$patrolLink = $afch.find( '.patrollink' );
-					if ( $patrolLink.length ) {
-						AFCH.actions.patrolRcid(
-							mw.util.getParamValue( 'rcid', $patrolLink.find( 'a' ).attr( 'href' ) ),
-							newPage.rawTitle // Include the title for a prettier log message
-						);
-					}
+					newPage.getPageId().done( ( pageId ) => {
+						if ( pageId !== null ) {
+							AFCH.actions.patrolPageId( pageId, newPage.rawTitle );
+						}
+					} );
 				}
 
 				// TALK PAGE
@@ -2794,46 +2791,35 @@
 		} );
 	}
 
-	function handlePatrol() {
-		prepareForProcessing('Patrolling');
-		const status = new AFCH.status.Element( 'Patrolling $1...', {
-			$1: AFCH.makeLinkElementToPage( afchPage.rawTitle )
+	// eslint-disable-next-line no-unused-vars
+	function showPatrolOptions() {
+		loadView( 'quick-action-processing', {
+			actionTitle: 'Patrolling',
+			actionClass: 'patrol'
 		} );
+		addFormSubmitHandler( handlePatrol );
+	}
 
+	function handlePatrol( data ) {
+		console.log( 'handlePatrol called with data:', data );
+
+		// Only patrol if checkbox is checked
+		if ( !data.patrolPage ) {
+			console.log( 'handlePatrol: patrolPage checkbox not checked, skipping' );
+			return;
+		}
+
+		console.log( 'handlePatrol: patrolPage checkbox checked, getting page ID for:', afchPage.rawTitle );
 		afchPage.getPageId().done( ( pageId ) => {
 			if ( pageId === null ) {
-				status.update( 'Page does not exist' );
 				console.error( 'handlePatrol: page does not exist:', afchPage.rawTitle );
 				return;
 			}
 
-			// First, get the CSRF token
-			AFCH.api.get( {
-				action: 'query',
-				meta: 'tokens',
-				formatversion: 2
-			} ).then( ( tokenData ) => {
-				const csrfToken = tokenData.query.tokens.csrftoken;
-
-				// Then use it to mark the page as reviewed via pagetriageaction
-				return AFCH.api.post( {
-					action: 'pagetriageaction',
-					format: 'json',
-					formatversion: 2,
-					pageid: pageId,
-					reviewed: 1,
-					token: csrfToken,
-					tags: 'AFCH'
-				} );
-			} ).done( ( data ) => {
-				if ( data.pagetriageaction && data.pagetriageaction.result === 'success' ) {
-					status.update( 'Patrolled $1' );
-				} else {
-					status.update( 'Failed to patrol $1: ' + JSON.stringify( data ) );
-				}
-			} ).fail( ( err ) => {
-				status.update( 'Failed to patrol $1: ' + JSON.stringify( err ) );
-			} );
+			console.log( 'handlePatrol: got page ID:', pageId, 'calling patrolPageId' );
+			AFCH.actions.patrolPageId( pageId, afchPage.rawTitle );
+		} ).fail( ( err ) => {
+			console.error( 'handlePatrol: failed to get page ID:', err );
 		} );
 	}
 
