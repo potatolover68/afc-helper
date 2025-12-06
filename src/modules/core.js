@@ -991,7 +991,7 @@
 			patrolPageId: function ( pageId, title ) {
 				console.log( 'patrolPageId called with pageId:', pageId, 'title:', title );
 				console.log( 'patrolPageId: AFCH.status.$container exists?', !!AFCH.status.$container );
-				
+
 				let request, deferred = $.Deferred(),
 					status = new AFCH.status.Element( 'Patrolling $1...',
 						{ $1: AFCH.makeLinkElementToPage( title ) } );
@@ -1076,6 +1076,7 @@
 				 *                              Can use $1 to represent the page name
 				 */
 				this.update = function ( html ) {
+					console.log( 'AFCH.status.Element.update called with html:', html, 'element:', this.$element );
 					// Convert to HTML first if necessary
 					if ( html.jquery ) {
 						html = AFCH.jQueryToHtml( html );
@@ -1091,7 +1092,9 @@
 						html = html.replace( key, value );
 					} );
 					// Then update the element
+					console.log( 'AFCH.status.Element.update: Setting html to:', html );
 					this.$element.html( html );
+					console.log( 'AFCH.status.Element.update: Element html after update:', this.$element.html() );
 				};
 
 				/**
@@ -1116,6 +1119,8 @@
 
 				this.$element = $( '<li>' )
 					.appendTo( AFCH.status.$container );
+
+				console.log( 'AFCH.status.Element: Created element, container:', AFCH.status.$container, 'element:', this.$element );
 
 				this.update( initialText );
 			}

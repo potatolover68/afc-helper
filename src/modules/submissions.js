@@ -2365,12 +2365,22 @@
 				} );
 
 				// Patrol the new page if desired
+				console.log( 'handleAccept: checking patrolPage checkbox, data.patrolPage:', data.patrolPage );
 				if ( data.patrolPage ) {
+					console.log( 'handleAccept: patrolPage is true, getting page ID for:', newPage.rawTitle );
 					newPage.getPageId().done( ( pageId ) => {
+						console.log( 'handleAccept: got page ID:', pageId, 'for page:', newPage.rawTitle );
 						if ( pageId !== null ) {
+							console.log( 'handleAccept: calling patrolPageId with pageId:', pageId );
 							AFCH.actions.patrolPageId( pageId, newPage.rawTitle );
+						} else {
+							console.error( 'handleAccept: pageId is null, cannot patrol' );
 						}
+					} ).fail( ( err ) => {
+						console.error( 'handleAccept: failed to get page ID for patrol:', err );
 					} );
+				} else {
+					console.log( 'handleAccept: patrolPage checkbox not checked, skipping patrol' );
 				}
 
 				// TALK PAGE
