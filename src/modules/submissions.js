@@ -2794,6 +2794,49 @@
 		} );
 	}
 
+	function handlePatrol() {
+		prepareForProcessing('Patrolling');
+		const status = new AFCH.status.Element( 'Patrolling $1...', {
+			$1: AFCH.makeLinkElementToPage( afchPage.rawTitle )
+		} );
+
+		afchPage.getPageId().done( ( pageId ) => {
+			if ( pageId === null ) {
+				status.update( 'Page does not exist' );
+				console.error( 'handlePatrol: page does not exist:', afchPage.rawTitle );
+				return;
+			}
+
+			// First, get the CSRF token
+			AFCH.api.get( {
+				action: 'query',
+				meta: 'tokens',
+				formatversion: 2
+			} ).then( ( tokenData ) => {
+				const csrfToken = tokenData.query.tokens.csrftoken;
+
+				// Then use it to mark the page as reviewed via pagetriageaction
+				return AFCH.api.post( {
+					action: 'pagetriageaction',
+					format: 'json',
+					formatversion: 2,
+					pageid: pageId,
+					reviewed: 1,
+					token: csrfToken,
+					tags: 'AFCH'
+				} );
+			} ).done( ( data ) => {
+				if ( data.pagetriageaction && data.pagetriageaction.result === 'success' ) {
+					status.update( 'Patrolled $1' );
+				} else {
+					status.update( 'Failed to patrol $1: ' + JSON.stringify( data ) );
+				}
+			} ).fail( ( err ) => {
+				status.update( 'Failed to patrol $1: ' + JSON.stringify( err ) );
+			} );
+		} );
+	}
+
 	function handleMark( unmark ) {
 		const actionText = ( unmark ? 'Unmarking' : 'Marking' );
 

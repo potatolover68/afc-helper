@@ -492,6 +492,35 @@
 			};
 
 			/**
+			 * Gets the page ID for this page
+			 *
+			 * @return {jQuery.Deferred} Resolves with the page ID (number) or null if page doesn't exist
+			 */
+			this.getPageId = function () {
+				const deferred = $.Deferred();
+
+				AFCH.api.get( {
+					action: 'query',
+					prop: 'info',
+					titles: this.rawTitle
+				} ).done( ( data ) => {
+					const pages = data.query.pages;
+					// A nonexistent page will be indexed as '-1'
+					if ( pages.hasOwnProperty( '-1' ) ) {
+						deferred.resolve( null );
+					} else {
+						// Get the first (and only) page ID from the pages object
+						const pageId = Object.keys( pages )[ 0 ];
+						deferred.resolve( parseInt( pageId, 10 ) );
+					}
+				} ).fail( ( err ) => {
+					deferred.reject( err );
+				} );
+
+				return deferred;
+			};
+
+			/**
 			 * Gets the associated talk page
 			 *
 			 * @return {AFCH.Page}
