@@ -1566,8 +1566,9 @@
 			afchPage.getText( false ),
 			existingWikiProjectsPromise,
 			afchPage.getCategories( /* useApi */ false, /* includeCategoryLinks */ true ),
-			afchPage.getShortDescription()
-		).then( ( pageText, existingWikiProjectsResult, categories, shortDescription ) => {
+			afchPage.getShortDescription(),
+			mw.user.getRights()
+		).then( ( pageText, existingWikiProjectsResult, categories, shortDescription, userRights ) => {
 			const alreadyHasWPBio = existingWikiProjectsResult.alreadyHasWPBio,
 				wikiProjectMap = existingWikiProjectsResult.wikiProjectMap,
 				existingWPBioTemplateName = existingWikiProjectsResult.existingWPBioTemplateName;
@@ -1583,15 +1584,17 @@
 			}
 			const wikiProjectObjs = Object.keys( wikiProjectMap ).map( ( key ) => wikiProjectMap[ key ] );
 
+			// Only show patrol option if user has patrol rights
+			const hasPatrolRight = userRights.includes( 'patrol' );
+
 			loadView( 'accept', {
 				newTitle: afchSubmission.shortTitle,
 				hasWikiProjects: hasWikiProjects,
 				wikiProjects: wikiProjectObjs,
 				categories: categories,
 				shortDescription: shortDescription,
-				// Only offer to patrol the page if not already patrolled (in other words, if
-				// the "Mark as patrolled" link can be found in the DOM)
-				showPatrolOption: !!$afch.find( '.patrollink' ).length
+				// Only offer to patrol the page if user has patrol rights
+				showPatrolOption: hasPatrolRight
 			}, () => {
 				$afch.find( '#newAssessment' ).chosen( {
 					allow_single_deselect: true,
@@ -2364,23 +2367,24 @@
 					summary: 'Cleaning up accepted [[Wikipedia:Articles for creation|Articles for creation]] submission'
 				} );
 
-				// Patrol the new page if desired
-				console.log( 'handleAccept: checking patrolPage checkbox, data.patrolPage:', data.patrolPage );
+				// Patrol the new page if desired (and user has patrol rights)
 				if ( data.patrolPage ) {
-					console.log( 'handleAccept: patrolPage is true, getting page ID for:', newPage.rawTitle );
-					newPage.getPageId().done( ( pageId ) => {
-						console.log( 'handleAccept: got page ID:', pageId, 'for page:', newPage.rawTitle );
-						if ( pageId !== null ) {
-							console.log( 'handleAccept: calling patrolPageId with pageId:', pageId );
-							AFCH.actions.patrolPageId( pageId, newPage.rawTitle );
-						} else {
-							console.error( 'handleAccept: pageId is null, cannot patrol' );
+					mw.user.getRights().then( ( rights ) => {
+						if ( !rights.includes( 'patrol' ) ) {
+							return;
 						}
-					} ).fail( ( err ) => {
-						console.error( 'handleAccept: failed to get page ID for patrol:', err );
+
+						// In mockItUp mode, page doesn't actually exist, so use a fake ID
+						if ( AFCH.consts.mockItUp ) {
+							AFCH.actions.patrolPageId( 12345, newPage.rawTitle );
+						} else {
+							newPage.getPageId().done( ( pageId ) => {
+								if ( pageId !== null ) {
+									AFCH.actions.patrolPageId( pageId, newPage.rawTitle );
+								}
+							} );
+						}
 					} );
-				} else {
-					console.log( 'handleAccept: patrolPage checkbox not checked, skipping patrol' );
 				}
 
 				// TALK PAGE
@@ -2811,25 +2815,22 @@
 	}
 
 	function handlePatrol( data ) {
-		console.log( 'handlePatrol called with data:', data );
-
 		// Only patrol if checkbox is checked
 		if ( !data.patrolPage ) {
-			console.log( 'handlePatrol: patrolPage checkbox not checked, skipping' );
 			return;
 		}
 
-		console.log( 'handlePatrol: patrolPage checkbox checked, getting page ID for:', afchPage.rawTitle );
-		afchPage.getPageId().done( ( pageId ) => {
-			if ( pageId === null ) {
-				console.error( 'handlePatrol: page does not exist:', afchPage.rawTitle );
+		// Check for patrol rights before proceeding
+		mw.user.getRights().then( ( rights ) => {
+			if ( !rights.includes( 'patrol' ) ) {
 				return;
 			}
 
-			console.log( 'handlePatrol: got page ID:', pageId, 'calling patrolPageId' );
-			AFCH.actions.patrolPageId( pageId, afchPage.rawTitle );
-		} ).fail( ( err ) => {
-			console.error( 'handlePatrol: failed to get page ID:', err );
+			afchPage.getPageId().done( ( pageId ) => {
+				if ( pageId !== null ) {
+					AFCH.actions.patrolPageId( pageId, afchPage.rawTitle );
+				}
+			} );
 		} );
 	}
 

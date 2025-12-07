@@ -3,6 +3,7 @@
  */
 
 /* eslint-env jest */
+/* global resetToAFCApplicablePage */
 
 require( './scaffold.js' );
 

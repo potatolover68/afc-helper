@@ -4,6 +4,7 @@
 
 /* eslint-env jest */
 /* eslint-disable indent, quotes */
+/* global resetToAFCApplicablePage */
 
 require( './scaffold.js' );
 
